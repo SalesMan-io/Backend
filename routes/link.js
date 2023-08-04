@@ -1,5 +1,6 @@
 import express from "express";
 import { Link } from "../models/Link.js";
+import { sendEmail } from "../utils/twilio.js";
 
 const router = express.Router();
 
@@ -39,6 +40,15 @@ router.post("/incrementClicks", async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.status(400).send(error);
+  }
+});
+
+router.post("/bruh", async (req, res) => {
+  try {
+    const result = await sendEmail();
+    return res.status(200).send(result);
+  } catch (error) {
+    console.log(error);
   }
 });
 
