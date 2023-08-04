@@ -29,9 +29,9 @@ const sendEmail = async () => {
     const msg = {
       to: "23zhankanghong@berkeley.edu", // Change to your recipient
       from: "hugozhan0802@gmail.com", // Change to your verified sender
-      subject: "https://www.youtube.com/watch?v=iik25wqIuFo",
-      text: "https://www.youtube.com/watch?v=iik25wqIuFo",
-      html: "<strong>https://www.youtube.com/watch?v=iik25wqIuFo</strong>",
+      subject: "https://frontend-magnetic-ai.vercel.app/link/64cc4a226a86d280039e66a6",
+      text: "https://frontend-magnetic-ai.vercel.app/link/64cc4a226a86d280039e66a6",
+      html: "<strong>https://frontend-magnetic-ai.vercel.app/link/64cc4a226a86d280039e66a6</strong>",
     };
     return await sgMail.send(msg);
   } catch (err) {
