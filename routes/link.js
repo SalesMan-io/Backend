@@ -10,35 +10,30 @@ router.post("/create", async (req, res) => {
     const link = await Link.create({ url });
     return res.status(200).send(link);
   } catch (error) {
-    console.log(error);
+    console.log("link/create: ", error);
     return res.status(400).send(error);
   }
 });
 
 router.post("/incrementClicks", async (req, res) => {
   try {
-    const { id } = req.body;
-    const ip = req.ip;
-    var query = {
-      _id: id,
-      clicks: { $ne: ip },
-    };
-    await Link.updateOne(query, { $inc: { clicksCount: 1 } });
+    const { id, customerId } = req.body;
     await Link.updateOne(
       {
         _id: id,
       },
       {
         $addToSet: {
-          clicks: ip,
+          clicks: customerId,
         },
+        $inc: { clicksCount: 1 },
       },
       { multi: false, upsert: false }
     );
     const link = await Link.findById(id, { url: 1, clicksCount: 1 });
     return res.status(200).send(link);
   } catch (error) {
-    console.log(error);
+    console.log("link/incrementClicks: ", error);
     return res.status(400).send(error);
   }
 });
@@ -48,7 +43,8 @@ router.post("/bruh", async (req, res) => {
     const result = await sendEmail();
     return res.status(200).send(result);
   } catch (error) {
-    console.log(error);
+    console.log("link/bruh: ", error);
+    return res.status(400).send(error);
   }
 });
 
@@ -56,9 +52,10 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const link = await Link.findById(id, { url: 1, clicksCount: 1 });
+    console.log(link)
     return res.status(200).send(link);
   } catch (error) {
-    console.log(error);
+    console.log("link/:id: ", error);
     return res.status(400).send(error);
   }
 });

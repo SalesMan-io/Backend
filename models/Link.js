@@ -2,11 +2,12 @@ import mongoose from "mongoose";
 
 const LinkSchema = new mongoose.Schema({
   /**************************************************************************
-   *                           Account Information                          *
+   *                           Link Information                          *
    **************************************************************************/
   url: {
     type: String,
     required: true,
+    unique: true,
   },
   clicks: [
     {

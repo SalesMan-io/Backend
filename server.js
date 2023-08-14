@@ -21,6 +21,7 @@ app.use(bodyParser.json())
 // Routers
 import  home from "./routes/home.js";
 import link from "./routes/link.js";
+import partner from "./routes/partner.js";
 
 // middleware
 app.use(express.json());
@@ -28,6 +29,7 @@ app.use(express.json());
 // Routes
 app.use("/", home);
 app.use("/link", link);
+app.use("/partner", partner);
 
 // Real IP Address
 app.set('trust proxy', true)

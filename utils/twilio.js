@@ -27,8 +27,8 @@ const sendText = async (to, body) => {
 const sendEmail = async () => {
   try {
     const msg = {
-      to: "23zhankanghong@berkeley.edu", // Change to your recipient
-      from: "hugozhan0802@gmail.com", // Change to your verified sender
+      to: "hugozhan0802@gmail.com", // Change to your recipient
+      from: "dyllanliuuu@gmail.com", // Change to your verified sender
       subject: "https://frontend-magnetic-ai.vercel.app/link/64cc4a226a86d280039e66a6",
       text: "https://frontend-magnetic-ai.vercel.app/link/64cc4a226a86d280039e66a6",
       html: "<strong>https://frontend-magnetic-ai.vercel.app/link/64cc4a226a86d280039e66a6</strong>",
