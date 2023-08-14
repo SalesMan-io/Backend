@@ -51,8 +51,9 @@ router.post("/bruh", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const link = await Link.findById(id);
-    return res.status(200).send({ ...link, uniqueClicks: link.clicks.length });
+    let link = await Link.findById(id);
+    link.uniqueClicks = link.clicks.length;
+    return res.status(200).send(link);
   } catch (error) {
     console.log("link/:id: ", error);
     return res.status(400).send(error);
