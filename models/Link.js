@@ -7,7 +7,6 @@ const LinkSchema = new mongoose.Schema({
   url: {
     type: String,
     required: true,
-    unique: true,
   },
   clicks: [
     {
