@@ -17,7 +17,6 @@ router.post("/create", async (req, res) => {
             return product;
           })
         );
-        console.log({ ...supplier, products });
         return { ...supplier, products };
       })
     );
@@ -35,10 +34,13 @@ router.post("/create", async (req, res) => {
 router.post("/addSupplier", async (req, res) => {
   try {
     const { retailerId, supplier } = req.body;
-    supplier.products.forEach(async (product) => {
-      const link = await Link.create({ url: product.url });
-      product.link = link._id;
-    });
+    supplier.products = await Promise.all(
+      supplier.products.map(async (product) => {
+        const link = await Link.create({ url: product.url });
+        product.link = link._id;
+        return product;
+      })
+    );
     await Partner.updateOne(
       {
         shopifyId: retailerId,

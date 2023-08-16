@@ -22,6 +22,7 @@ app.use(bodyParser.json())
 import  home from "./routes/home.js";
 import link from "./routes/link.js";
 import partner from "./routes/partner.js";
+import gdpr from "./routes/gdpr.js";
 
 // middleware
 app.use(express.json());
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use("/", home);
 app.use("/link", link);
 app.use("/partner", partner);
+app.use("/gdpr", gdpr);
 
 // Real IP Address
 app.set('trust proxy', true)
