@@ -23,6 +23,9 @@ const PartnerSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
+      discountCode: {
+        type: String,
+      },
       products: [
         {
           shopifyId: {
@@ -36,6 +39,9 @@ const PartnerSchema = new mongoose.Schema({
           price: {
             type: Number,
             required: true,
+          },
+          discountPercent: {
+            type: Number,
           },
           image: {
             type: String,
@@ -51,7 +57,7 @@ const PartnerSchema = new mongoose.Schema({
           },
           description: {
             type: String,
-          }
+          },
         },
       ],
     },
