@@ -151,6 +151,24 @@ router.post("/removeProducts", async (req, res) => {
   }
 });
 
+router.get("/shouldRedirect/:shopifyId", async (req, res) => {
+  try {
+    const { shopifyId } = req.params;
+    const partner = await Partner.findOne({ shopifyId: shopifyId });
+    let shouldRedirect = false;
+    for (let supplier of partner.suppliers) {
+      if (supplier.noncompete) {
+        shouldRedirect = true;
+        break;
+      }
+    }
+    return res.status(200).send({ shouldRedirect });
+  } catch (error) {
+    console.log("partner/getPartner: ", error);
+    return res.status(400).send(error);
+  }
+});
+
 router.get("/getPartner/:shopifyId", async (req, res) => {
   try {
     const { shopifyId } = req.params;

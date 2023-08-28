@@ -26,6 +26,10 @@ const PartnerSchema = new mongoose.Schema({
       discountCode: {
         type: String,
       },
+      noncompete: {
+        type: Boolean,
+        default: false,
+      },
       products: [
         {
           shopifyId: {
