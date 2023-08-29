@@ -7,22 +7,17 @@ const router = express.Router();
 
 router.post("/create", async (req, res) => {
   try {
-    const { retailer, suppliers } = req.body;
-    const updatedSuppliers = await Promise.all(
-      suppliers.map(async (supplier) => {
-        const products = await Promise.all(
-          supplier.products.map(async (product) => {
-            const link = await Link.create({ url: product.url });
-            product.link = link._id;
-            return product;
-          })
-        );
-        return { ...supplier, products };
+    const { retailer } = req.body;
+    const products = await Promise.all(
+      retailer.products.map(async (product) => {
+        const link = await Link.create({ url: product.url });
+        product.link = link._id;
+        return product;
       })
     );
     const partner = await Partner.create({
       ...retailer,
-      suppliers: updatedSuppliers,
+      products,
     });
     return res.status(200).send(partner);
   } catch (error) {
@@ -33,21 +28,14 @@ router.post("/create", async (req, res) => {
 
 router.post("/addSupplier", async (req, res) => {
   try {
-    const { retailerId, supplier } = req.body;
-    supplier.products = await Promise.all(
-      supplier.products.map(async (product) => {
-        const link = await Link.create({ url: product.url });
-        product.link = link._id;
-        return product;
-      })
-    );
+    const { retailerId, supplierId } = req.body;
     await Partner.updateOne(
       {
         shopifyId: retailerId,
       },
       {
         $addToSet: {
-          suppliers: supplier,
+          supplierIds: supplierId,
         },
       },
       { multi: false, upsert: false }
@@ -62,20 +50,19 @@ router.post("/addSupplier", async (req, res) => {
 
 router.post("/addProducts", async (req, res) => {
   try {
-    const { retailerId, supplierId, products } = req.body;
+    const { shopifyId, products } = req.body;
     products.forEach(async (product) => {
       const link = await Link.create({ url: product.url });
       product.link = link._id;
     });
     await Partner.updateOne(
       {
-        shopifyId: retailerId,
-        "suppliers.shopifyId": supplierId,
+        shopifyId: shopifyId,
       },
       [
         {
           $set: {
-            "suppliers.$.products": {
+            products: {
               $function: {
                 lang: "js",
                 args: ["$originalProducts"],
@@ -107,23 +94,22 @@ router.post("/addProducts", async (req, res) => {
     const partner = await Partner.findOne({ shopifyId: retailerId });
     return res.status(200).send(partner);
   } catch (error) {
-    console.log("partner/addSupplier: ", error);
+    console.log("partner/addProducts: ", error);
     return res.status(400).send(error);
   }
 });
 
 router.post("/removeProducts", async (req, res) => {
   try {
-    const { retailerId, supplierId, products } = req.body;
+    const { retailerId, products } = req.body;
     await Partner.updateOne(
       {
         shopifyId: retailerId,
-        "suppliers.shopifyId": supplierId,
       },
       [
         {
           $set: {
-            "suppliers.$.products": {
+            products: {
               $function: {
                 lang: "js",
                 args: ["$originalProducts"],
@@ -146,7 +132,7 @@ router.post("/removeProducts", async (req, res) => {
     const partner = await Partner.findOne({ shopifyId: retailerId });
     return res.status(200).send(partner);
   } catch (error) {
-    console.log("partner/addSupplier: ", error);
+    console.log("partner/removeProducts: ", error);
     return res.status(400).send(error);
   }
 });
@@ -155,14 +141,17 @@ router.get("/shouldRedirect/:shopifyId", async (req, res) => {
   try {
     const { shopifyId } = req.params;
     const partner = await Partner.findOne({ shopifyId: shopifyId });
-    let shouldRedirect = false;
-    for (let supplier of partner.suppliers) {
+    let supplierNoncompete = false;
+    for (let supplierId of partner.supplierIds) {
+      const supplier = await Partner.findOne({ shopifyId: supplierId });
       if (supplier.noncompete) {
-        shouldRedirect = true;
+        supplierNoncompete = true;
         break;
       }
     }
-    return res.status(200).send({ shouldRedirect });
+    return res
+      .status(200)
+      .send({ shouldRedirect: supplierNoncompete && partner.noncompete });
   } catch (error) {
     console.log("partner/getPartner: ", error);
     return res.status(400).send(error);
@@ -173,7 +162,14 @@ router.get("/getPartner/:shopifyId", async (req, res) => {
   try {
     const { shopifyId } = req.params;
     const partner = await Partner.findOne({ shopifyId: shopifyId });
-    return res.status(200).send(partner);
+    let suppliers = await Promise.all(
+      partner.supplierIds.map(async (supplierId) => {
+        const supplier = await Partner.findOne({ shopifyId: supplierId });
+        return supplier.noncompete ? supplier : null;
+      })
+    );
+    suppliers = suppliers.filter((supplier) => supplier);
+    return res.status(200).send({ ...partner._doc, suppliers });
   } catch (error) {
     console.log("partner/getPartner: ", error);
     return res.status(400).send(error);
