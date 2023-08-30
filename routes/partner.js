@@ -51,10 +51,14 @@ router.post("/addSupplier", async (req, res) => {
 router.post("/addProducts", async (req, res) => {
   try {
     const { shopifyId, products } = req.body;
-    products.forEach(async (product) => {
-      const link = await Link.create({ url: product.url });
-      product.link = link._id;
-    });
+    const updatedProducts = await Promise.all(
+      products.map(async (product) => {
+        const link = await Link.create({ url: product.url });
+        product.link = link._id;
+        return product;
+      })
+    );
+    console.log(products);
     await Partner.updateOne(
       {
         shopifyId: shopifyId,
@@ -65,7 +69,7 @@ router.post("/addProducts", async (req, res) => {
             products: {
               $function: {
                 lang: "js",
-                args: ["$products", JSON.stringify(products)],
+                args: ["$products", JSON.stringify(updatedProducts)],
                 body: `function (originalProducts, products) {
                   products = JSON.parse(products);
                   products.forEach((product) => {
@@ -113,8 +117,8 @@ router.post("/removeProducts", async (req, res) => {
             products: {
               $function: {
                 lang: "js",
-                args: ["$originalProducts"],
-                body: function (originalProducts) {
+                args: ["$products", JSON.stringify(products)],
+                body: `function (originalProducts, products) {
                   products.forEach((product) => {
                     originalProducts = originalProducts.filter(
                       (originalProduct) => {
@@ -123,7 +127,7 @@ router.post("/removeProducts", async (req, res) => {
                     );
                   });
                   return originalProducts;
-                },
+                }`,
               },
             },
           },
