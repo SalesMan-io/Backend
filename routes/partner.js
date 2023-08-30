@@ -65,8 +65,9 @@ router.post("/addProducts", async (req, res) => {
             products: {
               $function: {
                 lang: "js",
-                args: ["$originalProducts"],
-                body: function (originalProducts) {
+                args: ["$products", JSON.stringify(products)],
+                body: `function (originalProducts, products) {
+                  products = JSON.parse(products);
                   products.forEach((product) => {
                     const newProducts = [];
                     let added = false;
@@ -77,21 +78,21 @@ router.post("/addProducts", async (req, res) => {
                       } else {
                         newProducts.push(originalProducts[i]);
                       }
-                      if (!added) {
-                        newProducts.push(product);
-                      }
-                      originalProducts = newProducts;
                     }
+                    if (!added) {
+                      newProducts.push(product);
+                    }
+                    originalProducts = newProducts;
                   });
                   return originalProducts;
-                },
+                }`,
               },
             },
           },
         },
       ]
     );
-    const partner = await Partner.findOne({ shopifyId: retailerId });
+    const partner = await Partner.findOne({ shopifyId: shopifyId });
     return res.status(200).send(partner);
   } catch (error) {
     console.log("partner/addProducts: ", error);
