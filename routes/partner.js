@@ -58,7 +58,6 @@ router.post("/addProducts", async (req, res) => {
         return product;
       })
     );
-    console.log(products);
     await Partner.updateOne(
       {
         shopifyId: shopifyId,
