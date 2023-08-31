@@ -53,7 +53,10 @@ router.post("/addSupplier", async (req, res) => {
       },
       { multi: false, upsert: false }
     );
-    const partner = await Partner.findOne({ shopifyId: retailerId });
+    const partner = await Partner.findOne(
+      { shopifyId: retailerId },
+      { events: 0 }
+    );
     return res.status(200).send(partner);
   } catch (error) {
     console.log("partner/addSupplier: ", error);
@@ -108,7 +111,10 @@ router.post("/addProducts", async (req, res) => {
         },
       ]
     );
-    const partner = await Partner.findOne({ shopifyId: shopifyId });
+    const partner = await Partner.findOne(
+      { shopifyId: shopifyId },
+      { events: 0 }
+    );
     return res.status(200).send(partner);
   } catch (error) {
     console.log("partner/addProducts: ", error);
@@ -146,7 +152,10 @@ router.post("/removeProducts", async (req, res) => {
         },
       ]
     );
-    const partner = await Partner.findOne({ shopifyId: retailerId });
+    const partner = await Partner.findOne(
+      { shopifyId: retailerId },
+      { events: 0 }
+    );
     return res.status(200).send(partner);
   } catch (error) {
     console.log("partner/removeProducts: ", error);
@@ -157,10 +166,16 @@ router.post("/removeProducts", async (req, res) => {
 router.get("/shouldRedirect/:shopifyId", async (req, res) => {
   try {
     const { shopifyId } = req.params;
-    const partner = await Partner.findOne({ shopifyId: shopifyId });
+    const partner = await Partner.findOne(
+      { shopifyId: shopifyId },
+      { events: 0 }
+    );
     let supplierNoncompete = false;
     for (let supplierId of partner.supplierIds) {
-      const supplier = await Partner.findOne({ shopifyId: supplierId });
+      const supplier = await Partner.findOne(
+        { shopifyId: supplierId },
+        { events: 0 }
+      );
       if (supplier.noncompete) {
         supplierNoncompete = true;
         break;
@@ -178,10 +193,16 @@ router.get("/shouldRedirect/:shopifyId", async (req, res) => {
 router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
   try {
     const { shopifyId, orderId } = req.params;
-    const partner = await Partner.findOne({ shopifyId: shopifyId });
+    const partner = await Partner.findOne(
+      { shopifyId: shopifyId },
+      { events: 0 }
+    );
     let suppliers = await Promise.all(
       partner.supplierIds.map(async (supplierId) => {
-        const supplier = await Partner.findOne({ shopifyId: supplierId });
+        const supplier = await Partner.findOne(
+          { shopifyId: supplierId },
+          { events: 0 }
+        );
         return supplier.noncompete ? supplier : null;
       })
     );
@@ -207,11 +228,6 @@ router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
             },
             { multi: false, upsert: false }
           );
-          console.log({
-            ...product,
-            supplier: supplier.name,
-            discountCode: supplier.discountCode,
-          })
           return {
             ...product._doc,
             supplier: supplier.name,
@@ -225,7 +241,8 @@ router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
       const remaining = totalProductCount - galleryData.length;
       let products = getRandom(
         suppliers[suppliers.length - 1].products.filter(
-          (item) => !galleryData.find((product) => product.shopifyId === item.shopifyId)
+          (item) =>
+            !galleryData.find((product) => product.shopifyId === item.shopifyId)
         ),
         remaining
       );
@@ -256,9 +273,55 @@ router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
     galleryData.sort((a, b) => {
       return -(a.discountPercent - b.discountPercent);
     });
+    await Partner.updateOne(
+      {
+        shopifyId: shopifyId,
+      },
+      {
+        $addToSet: {
+          events: {
+            name: "Page Loaded",
+            timestamp: new Date(),
+            data: {
+              store: shopifyId,
+              orderId: orderId,
+            },
+          },
+        },
+      },
+      { multi: false, upsert: false }
+    );
     return res.status(200).send({ ...partner._doc, suppliers, galleryData });
   } catch (error) {
     console.log("partner/getPartner: ", error);
+    return res.status(400).send(error);
+  }
+});
+
+router.post("/pageUnloaded", async (req, res) => {
+  try {
+    const { shopifyId, orderId } = req.body;
+    await Partner.updateOne(
+      {
+        shopifyId: shopifyId,
+      },
+      {
+        $addToSet: {
+          events: {
+            name: "Page Unloaded",
+            timestamp: new Date(),
+            data: {
+              store: shopifyId,
+              orderId: orderId,
+            },
+          },
+        },
+      },
+      { multi: false, upsert: false }
+    );
+    return res.status(200).send();
+  } catch (error) {
+    console.log("partner/pageUnloaded: ", error);
     return res.status(400).send(error);
   }
 });

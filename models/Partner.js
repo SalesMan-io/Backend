@@ -17,6 +17,19 @@ const PartnerSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  events: [
+    {
+      name: {
+        type: String,
+      },
+      timestamp: {
+        type: Date,
+      },
+      data: {
+        type: Object,
+      },
+    },
+  ],
   products: [
     {
       shopifyId: {
