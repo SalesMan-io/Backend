@@ -8,6 +8,11 @@ const LinkSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  visits: [
+    {
+      type: String,
+    },
+  ],
   clicks: [
     {
       type: String,

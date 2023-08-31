@@ -5,6 +5,19 @@ import { Partner } from "../models/Partner.js";
 
 const router = express.Router();
 
+const getRandom = (arr, n) => {
+  var len = arr.length;
+  n = Math.max(Math.min(n, len), 0);
+  var result = new Array(n);
+  var taken = new Array(len);
+  while (n--) {
+    var x = Math.floor(Math.random() * len);
+    result[n] = arr[x in taken ? taken[x] : x];
+    taken[x] = --len in taken ? taken[len] : len;
+  }
+  return result;
+};
+
 router.post("/create", async (req, res) => {
   try {
     const { retailer } = req.body;
@@ -162,9 +175,9 @@ router.get("/shouldRedirect/:shopifyId", async (req, res) => {
   }
 });
 
-router.get("/getPartner/:shopifyId", async (req, res) => {
+router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
   try {
-    const { shopifyId } = req.params;
+    const { shopifyId, orderId } = req.params;
     const partner = await Partner.findOne({ shopifyId: shopifyId });
     let suppliers = await Promise.all(
       partner.supplierIds.map(async (supplierId) => {
@@ -172,8 +185,61 @@ router.get("/getPartner/:shopifyId", async (req, res) => {
         return supplier.noncompete ? supplier : null;
       })
     );
+    const totalProductCount = 12;
     suppliers = suppliers.filter((supplier) => supplier);
-    return res.status(200).send({ ...partner._doc, suppliers });
+    const supplierProductCount = Math.floor(
+      totalProductCount / suppliers.length
+    );
+    const galleryData = [];
+    for (const supplier of suppliers) {
+      const products = getRandom(supplier.products, supplierProductCount);
+      for (const product of products) {
+        product.supplier = supplier.name;
+        product.discountCode = supplier.discountCode;
+        await Link.updateOne(
+          {
+            _id: product.link,
+          },
+          {
+            $addToSet: {
+              visits: `${shopifyId}/${orderId}`,
+            },
+          },
+          { multi: false, upsert: false }
+        );
+      }
+      galleryData.push(...products);
+    }
+    if (galleryData.length < totalProductCount) {
+      const remaining = totalProductCount - galleryData.length;
+      const products = getRandom(
+        suppliers[suppliers.length - 1].products.filter(
+          (item) => !galleryData.includes(item)
+        ),
+        remaining
+      );
+      for (const product of products) {
+        product.supplier = suppliers[data.suppliers.length - 1].name;
+        product.discountCode =
+          data.suppliers[suppliers.length - 1].discountCode;
+        await Link.updateOne(
+          {
+            _id: product.link,
+          },
+          {
+            $addToSet: {
+              visits: `${shopifyId}/${orderId}`,
+            },
+          },
+          { multi: false, upsert: false }
+        );
+      }
+      galleryData.push(...products);
+    }
+    galleryData.sort((a, b) => {
+      return -(a.discountPercent - b.discountPercent);
+    });
+    return res.status(200).send({ ...partner._doc, suppliers, galleryData });
   } catch (error) {
     console.log("partner/getPartner: ", error);
     return res.status(400).send(error);
