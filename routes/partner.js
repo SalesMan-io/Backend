@@ -192,48 +192,65 @@ router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
     );
     const galleryData = [];
     for (const supplier of suppliers) {
-      const products = getRandom(supplier.products, supplierProductCount);
-      for (const product of products) {
-        product.supplier = supplier.name;
-        product.discountCode = supplier.discountCode;
-        await Link.updateOne(
-          {
-            _id: product.link,
-          },
-          {
-            $addToSet: {
-              visits: `${shopifyId}/${orderId}`,
+      let products = getRandom(supplier.products, supplierProductCount);
+
+      products = await Promise.all(
+        products.map(async (product) => {
+          await Link.updateOne(
+            {
+              _id: product.link,
             },
-          },
-          { multi: false, upsert: false }
-        );
-      }
+            {
+              $addToSet: {
+                visits: `${shopifyId}/${orderId}`,
+              },
+            },
+            { multi: false, upsert: false }
+          );
+          console.log({
+            ...product,
+            supplier: supplier.name,
+            discountCode: supplier.discountCode,
+          })
+          return {
+            ...product._doc,
+            supplier: supplier.name,
+            discountCode: supplier.discountCode,
+          };
+        })
+      );
       galleryData.push(...products);
     }
     if (galleryData.length < totalProductCount) {
       const remaining = totalProductCount - galleryData.length;
-      const products = getRandom(
+      let products = getRandom(
         suppliers[suppliers.length - 1].products.filter(
-          (item) => !galleryData.includes(item)
+          (item) => !galleryData.find((product) => product.shopifyId === item.shopifyId)
         ),
         remaining
       );
-      for (const product of products) {
-        product.supplier = suppliers[data.suppliers.length - 1].name;
-        product.discountCode =
-          data.suppliers[suppliers.length - 1].discountCode;
-        await Link.updateOne(
-          {
-            _id: product.link,
-          },
-          {
-            $addToSet: {
-              visits: `${shopifyId}/${orderId}`,
+      products = await Promise.all(
+        products.map(async (product) => {
+          product.supplier = suppliers[suppliers.length - 1].name;
+          product.discountCode = suppliers[suppliers.length - 1].discountCode;
+          await Link.updateOne(
+            {
+              _id: product.link,
             },
-          },
-          { multi: false, upsert: false }
-        );
-      }
+            {
+              $addToSet: {
+                visits: `${shopifyId}/${orderId}`,
+              },
+            },
+            { multi: false, upsert: false }
+          );
+          return {
+            ...product._doc,
+            supplier: suppliers[suppliers.length - 1].name,
+            discountCode: suppliers[suppliers.length - 1].discountCode,
+          };
+        })
+      );
       galleryData.push(...products);
     }
     galleryData.sort((a, b) => {
