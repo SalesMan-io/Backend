@@ -2,6 +2,7 @@ import express from "express";
 import { Link } from "../models/Link.js";
 import { sendEmail } from "../utils/twilio.js";
 import { Partner } from "../models/Partner.js";
+import { BSON } from "mongodb";
 
 const router = express.Router();
 
@@ -16,6 +17,12 @@ const getRandom = (arr, n) => {
     taken[x] = --len in taken ? taken[len] : len;
   }
   return result;
+};
+
+const shopOrderIdDict = {
+  "www.lingskincare.com": 29383,
+  "jackfir.com": 4845,
+  "enerhealthbotanicals.com": 91894,
 };
 
 router.post("/create", async (req, res) => {
@@ -298,9 +305,12 @@ router.get("/getPartner/:shopifyId/:orderId", async (req, res) => {
   }
 });
 
-router.post("/pageUnloaded", async (req, res) => {
+router.post("/logEvent", async (req, res) => {
   try {
-    const { shopifyId, orderId } = req.body;
+    const { shopifyId, orderId, eventName } = req.body;
+    if (!shopOrderIdDict[shopifyId] || shopOrderIdDict[shopifyId] > orderId) {
+      return res.status(200).send("Test");
+    }
     await Partner.updateOne(
       {
         shopifyId: shopifyId,
@@ -308,7 +318,7 @@ router.post("/pageUnloaded", async (req, res) => {
       {
         $addToSet: {
           events: {
-            name: "Page Unloaded",
+            name: eventName,
             timestamp: new Date(),
             data: {
               store: shopifyId,
@@ -321,7 +331,80 @@ router.post("/pageUnloaded", async (req, res) => {
     );
     return res.status(200).send();
   } catch (error) {
-    console.log("partner/pageUnloaded: ", error);
+    console.log("partner/logEvent: ", error);
+    return res.status(400).send(error);
+  }
+});
+
+router.post("/addEmail", async (req, res) => {
+  try {
+    const { shopifyId, email } = req.body;
+    await Partner.updateOne(
+      {
+        shopifyId: shopifyId,
+      },
+      {
+        $addToSet: {
+          emails: email,
+        },
+      },
+      { multi: false, upsert: false }
+    );
+    return res.status(200).send();
+  } catch (error) {
+    console.log("partner/addEmail: ", error);
+    return res.status(400).send(error);
+  }
+});
+
+router.post("/track", async (req, res) => {
+  try {
+    const { shopifyId } = req.body;
+    const shop = await Partner.findOne({ shopifyId: shopifyId });
+    let visits = new Set();
+    let uniqueClicks = new Set();
+    for (const product of shop.products) {
+      const link = await Link.findById(product.link);
+      for (const visit of link.visits) {
+        const [retailerId, orderId] = visit.split("/");
+        const minimumOrderId = shopOrderIdDict[retailerId];
+        if (minimumOrderId && parseInt(orderId) > minimumOrderId) {
+          visits.add(visit);
+        }
+      }
+      link.clicks.forEach((click) => {
+        const [retailerId, orderId] = click.split("/");
+        const minimumOrderId = shopOrderIdDict[retailerId];
+        if (minimumOrderId && parseInt(orderId) > minimumOrderId) {
+          console.log(click);
+          uniqueClicks.add(click);
+        }
+      });
+    }
+    // for (const visit of visits) {
+    //   const [retailerId, orderId] = visit.split("/");
+    //   console.log(visit);
+    //   const retailer = await Partner.findOne({ shopifyId: retailerId });
+    //   const orderEvents = retailer.events.filter(
+    //     (event) => event.data.orderId === orderId
+    //   );
+    //   for (let i = 0; i < orderEvents.length - 1; i++) {
+    //     if (
+    //       orderEvents[i].name === "Page Loaded" &&
+    //       orderEvents[i + 1].name === "Page Unloaded"
+    //     ) {
+    //       const timeDiff =
+    //         orderEvents[i + 1].timestamp - orderEvents[i].timestamp;
+    //       console.log(timeDiff / 1000);
+    //       break;
+    //     }
+    //   }
+    // }
+    return res
+      .status(200)
+      .send({ visitsCount: visits.size, unqiueClicksCount: uniqueClicks.size });
+  } catch (error) {
+    console.log("partner/track: ", error);
     return res.status(400).send(error);
   }
 });

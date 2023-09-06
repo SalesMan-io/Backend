@@ -30,6 +30,11 @@ const PartnerSchema = new mongoose.Schema({
       },
     },
   ],
+  emails: [
+    {
+      type: String,
+    }
+  ],
   products: [
     {
       shopifyId: {
